@@ -18,8 +18,8 @@ vector<int> solution(int l, int r) {
         if (valid) answer.push_back(i);
     }
     if (answer.empty()) answer.push_back(-1);
-    else {
-        sort(answer.begin(), answer.end());
-    }
+    //else {
+        //sort(answer.begin(), answer.end());
+    //}
     return answer;
 }
