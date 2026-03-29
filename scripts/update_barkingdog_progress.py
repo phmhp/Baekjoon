@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict
+from typing import List
 from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -107,16 +106,19 @@ def progress_bar(done: int, total: int, width: int = 20) -> str:
     return "█" * filled + "░" * (width - filled)
 
 
-def summarize_by_kind(problems: List[Problem], solved: set[int]) -> Dict[str, tuple[int, int]]:
-    order = ["연습 문제", "기본 문제", "기본 문제✔", "응용 문제", "응용 문제✔"]
-    out = {k: [0, 0] for k in order}
-    for p in problems:
-        if p.kind not in out:
-            out[p.kind] = [0, 0]
-        out[p.kind][1] += 1
-        if p.number in solved:
-            out[p.kind][0] += 1
-    return {k: tuple(v) for k, v in out.items() if v[1] > 0}
+def render_problem_list(wb: Workbook, solved: set[int]) -> str:
+    lines = []
+    lines.append("<details>")
+    lines.append(f"<summary>문제 목록 보기 ({len(wb.problems)}문제)</summary>")
+    lines.append("")
+    lines.append("| 상태 | 번호 | 문제 |")
+    lines.append("|---|---:|---|")
+    for p in wb.problems:
+        status = "✅" if p.number in solved else "⬜"
+        lines.append(f"| {status} | {p.number} | [{p.title}]({p.url}) |")
+    lines.append("")
+    lines.append("</details>")
+    return "\n".join(lines)
 
 
 def render_workbook_section(wb: Workbook, solved: set[int]) -> str:
@@ -125,50 +127,19 @@ def render_workbook_section(wb: Workbook, solved: set[int]) -> str:
     percent = 0 if total == 0 else round(done * 100 / total, 1)
 
     lines = []
-    lines.append(f"### [{wb.title}]({wb.workbook_url})")
+    lines.append("---")
     lines.append("")
-    lines.append(f"- 진행도: **{done}/{total} ({percent}%)**")
-    lines.append(f"- 바: `{progress_bar(done, total)}`")
+    lines.append(f"## [{wb.title}]({wb.workbook_url})")
     lines.append("")
-
-    by_kind = summarize_by_kind(wb.problems, solved)
-    if by_kind:
-        lines.append("| 분류 | 진행 |")
-        lines.append("|---|---:|")
-        for kind, (k_done, k_total) in by_kind.items():
-            lines.append(f"| {kind} | {k_done}/{k_total} |")
-        lines.append("")
-
-    lines.append("| 상태 | 번호 | 문제 | 분류 |")
-    lines.append("|---|---:|---|---|")
-    for p in wb.problems:
-        status = "✅" if p.number in solved else "⬜"
-        lines.append(f"| {status} | {p.number} | [{p.title}]({p.url}) | {p.kind} |")
+    lines.append(f"- 진행도: **{done}/{total} ({percent}%)** | `{progress_bar(done, total)}`")
+    lines.append("")
+    lines.append(render_problem_list(wb, solved))
     lines.append("")
     return "\n".join(lines)
 
 
 def generate_progress_section(workbooks: List[Workbook], solved: set[int]) -> str:
-    total_problems = sum(len(w.problems) for w in workbooks)
-    solved_count = sum(1 for w in workbooks for p in w.problems if p.number in solved)
-    overall_percent = 0 if total_problems == 0 else round(solved_count * 100 / total_problems, 1)
-
     lines = []
-    lines.append("## 전체 요약")
-    lines.append("")
-    lines.append(f"- 전체 진행도: **{solved_count}/{total_problems} ({overall_percent}%)**")
-    lines.append(f"- 전체 바: `{progress_bar(solved_count, total_problems, width=30)}`")
-    lines.append("")
-    lines.append("| 문제집 | 진행도 |")
-    lines.append("|---|---:|")
-    for wb in workbooks:
-        done = sum(1 for p in wb.problems if p.number in solved)
-        total = len(wb.problems)
-        lines.append(f"| [{wb.title}]({wb.workbook_url}) | {done}/{total} |")
-    lines.append("")
-    lines.append("---")
-    lines.append("")
-
     for wb in workbooks:
         lines.append(render_workbook_section(wb, solved))
     return "\n".join(lines).rstrip() + "\n"
