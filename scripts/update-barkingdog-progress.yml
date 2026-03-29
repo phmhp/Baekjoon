@@ -1,0 +1,42 @@
+name: Update BaaaaaaaaaaarkingDog Progress
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "백준/**"
+      - "scripts/update_barkingdog_progress.py"
+      - "scripts/workbooks.json"
+      - "README.md"
+      - ".github/workflows/update-barkingdog-progress.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  update-progress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Update README
+        run: python scripts/update_barkingdog_progress.py
+
+      - name: Commit changes
+        run: |
+          if git diff --quiet README.md; then
+            echo "No README changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "docs: update BaaaaaaaaaaarkingDog progress"
+          git push
